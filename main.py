@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 import concurrent.futures
 from httpx import ReadTimeout
 
-load_dotenv()
+load_dotenv(override=True)
 
 from fastapi import FastAPI, HTTPException, Request, Security
 from fastapi.middleware.cors import CORSMiddleware
