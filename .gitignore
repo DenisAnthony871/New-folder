@@ -43,9 +43,6 @@ data/
 coverage.xml
 htmlcov/
 
-# Smoke test script — contains hardcoded API key
-test_api.ps1
-
 # Internal data / one-off scripts — not for version control
 qualitative_transcripts.md
 extract_transcripts.py
