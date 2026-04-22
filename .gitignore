@@ -39,8 +39,16 @@ data/
 # Testing
 .pytest_cache/
 .coverage
+.coveragerc
 coverage.xml
 htmlcov/
+
+# Smoke test script — contains hardcoded API key
+test_api.ps1
+
+# Internal data / one-off scripts — not for version control
+qualitative_transcripts.md
+extract_transcripts.py
 
 # Editor and IDE
 .vscode/settings.json
