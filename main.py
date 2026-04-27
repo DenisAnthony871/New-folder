@@ -163,7 +163,7 @@ class BadRequestError(Exception):
 class ChatRequest(BaseModel):
     query: str = Field(..., min_length=1, max_length=500)
     conversation_id: Optional[str] = None
-    model: Optional[str] = None
+    model: str = Field(default=LLM_MODEL)
 
     @field_validator("query")
     @classmethod
@@ -172,7 +172,7 @@ class ChatRequest(BaseModel):
             raise ValueError("Query cannot be blank")
         return v.strip()
 
-    @field_validator("model")
+    @field_validator("model", mode="before")
     @classmethod
     def validate_model(cls, v):
         if v is None:

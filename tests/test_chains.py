@@ -23,37 +23,42 @@ def test_get_llm_cloud_model_missing_key_falls_back(monkeypatch):
     assert "ollama" in type(llm).__module__.lower()
 
 
+import sys
+
 def test_get_llm_anthropic_with_key(monkeypatch):
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-fake-key")
-    with patch("langchain_anthropic.ChatAnthropic") as mock_cls:
-        mock_cls.return_value = MagicMock()
-        from importlib import reload
-        import chains
-        reload(chains)
-        llm = chains.get_llm("claude-sonnet-4-6")
-        mock_cls.assert_called_once()
+    mock_module = MagicMock()
+    sys.modules["langchain_anthropic"] = mock_module
+    from importlib import reload
+    import chains
+    reload(chains)
+    llm = chains.get_llm("claude-sonnet-4-6")
+    mock_module.ChatAnthropic.assert_called_once()
+    sys.modules.pop("langchain_anthropic", None)
 
 
 def test_get_llm_openai_with_key(monkeypatch):
     monkeypatch.setenv("OPENAI_API_KEY", "sk-fake-openai-key")
-    with patch("langchain_openai.ChatOpenAI") as mock_cls:
-        mock_cls.return_value = MagicMock()
-        from importlib import reload
-        import chains
-        reload(chains)
-        llm = chains.get_llm("gpt-4o-mini")
-        mock_cls.assert_called_once()
+    mock_module = MagicMock()
+    sys.modules["langchain_openai"] = mock_module
+    from importlib import reload
+    import chains
+    reload(chains)
+    llm = chains.get_llm("gpt-4o-mini")
+    mock_module.ChatOpenAI.assert_called_once()
+    sys.modules.pop("langchain_openai", None)
 
 
 def test_get_llm_google_with_key(monkeypatch):
     monkeypatch.setenv("GOOGLE_API_KEY", "fake-google-key")
-    with patch("langchain_google_genai.ChatGoogleGenerativeAI") as mock_cls:
-        mock_cls.return_value = MagicMock()
-        from importlib import reload
-        import chains
-        reload(chains)
-        llm = chains.get_llm("gemini-2.0-flash")
-        mock_cls.assert_called_once()
+    mock_module = MagicMock()
+    sys.modules["langchain_google_genai"] = mock_module
+    from importlib import reload
+    import chains
+    reload(chains)
+    llm = chains.get_llm("gemini-2.0-flash")
+    mock_module.ChatGoogleGenerativeAI.assert_called_once()
+    sys.modules.pop("langchain_google_genai", None)
 
 
 def test_rewrite_chain_exists():
