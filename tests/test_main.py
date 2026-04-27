@@ -258,6 +258,59 @@ async def test_rate_limit_handler_client_none():
     response = await rate_limit_handler(mock_request, RateLimitExceeded(mock_limit))
     assert response.status_code == 429
 
+def test_list_models_no_auth(client):
+    """Models endpoint is public — no auth required."""
+    response = client.get("/models")
+    assert response.status_code == 200
+    data = response.json()
+    assert "models" in data
+    assert isinstance(data["models"], list)
+    assert len(data["models"]) > 0
+
+def test_list_models_includes_local(client):
+    """Local Ollama model must always be available."""
+    response = client.get("/models")
+    models = response.json()["models"]
+    local = next((m for m in models if m["id"] == "llama3.2:3b"), None)
+    assert local is not None
+    assert local["available"] is True
+    assert local["provider"] == "ollama"
+
+def test_chat_with_explicit_model(client, auth_headers):
+    """Explicit model field accepted and reflected in response."""
+    response = client.post("/chat", headers=auth_headers, json={
+        "query": "What is Jio Fiber?",
+        "model": "llama3.2:3b",
+    })
+    assert response.status_code == 200
+    data = response.json()
+    assert data["model"] == "llama3.2:3b"
+
+def test_chat_invalid_model_rejected(client, auth_headers):
+    """Unsupported model name returns 422."""
+    response = client.post("/chat", headers=auth_headers, json={
+        "query": "What is Jio Fiber?",
+        "model": "gpt-99-ultra-fake",
+    })
+    assert response.status_code == 422
+
+def test_chat_default_model_applied(client, auth_headers):
+    """When model is omitted, response contains the default model."""
+    response = client.post("/chat", headers=auth_headers, json={
+        "query": "What is Jio Fiber?",
+    })
+    assert response.status_code == 200
+    assert response.json()["model"] == "llama3.2:3b"
+
+def test_chat_cloud_model_fallback(monkeypatch):
+    """Cloud model without API key falls back gracefully — returns local model."""
+    from chains import get_llm
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    llm = get_llm("claude-sonnet-4-6")
+    
+    assert hasattr(llm, "model")
+    assert llm.model == "llama3.2:3b"
+
 def test_chat_persistence_and_logging_asserted(client, auth_headers, mock_db):
     response = client.post("/chat", headers=auth_headers, json={"query": "test persistence"})
     assert response.status_code == 200

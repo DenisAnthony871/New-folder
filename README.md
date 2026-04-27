@@ -78,6 +78,39 @@ User Question
 
 ---
 
+## Multi-Model Support
+
+The chatbot supports multiple LLM backends. The local Ollama model is always available. Cloud models are enabled by adding the corresponding API key to `.env`.
+
+| Model | Provider | Requires |
+| ------- | -------- | -------- |
+| `llama3.2:3b` | Ollama (local) | Nothing — always available |
+| `claude-haiku-4-5-20251001` | Anthropic | `ANTHROPIC_API_KEY` |
+| `claude-sonnet-4-6` | Anthropic | `ANTHROPIC_API_KEY` |
+| `gpt-4o-mini` | OpenAI | `OPENAI_API_KEY` |
+| `gpt-4o` | OpenAI | `OPENAI_API_KEY` |
+| `gemini-2.0-flash` | Google | `GOOGLE_API_KEY` |
+| `gemini-1.5-pro` | Google | `GOOGLE_API_KEY` |
+
+The frontend automatically shows a model selector when more than one model is available. The query rewrite pipeline always uses the local model regardless of which model is selected for answer generation — this keeps retry costs at zero.
+
+To check which models are available on a running instance:
+
+```bash
+curl http://127.0.0.1:8080/models
+```
+
+To send a request using a specific model:
+
+```bash
+curl -X POST http://127.0.0.1:8080/chat \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: YOUR_API_KEY" \
+  -d '{"query": "What is Jio Fiber?", "model": "gemini-2.0-flash"}'
+```
+
+---
+
 ## Project Structure
 
 ```text
@@ -293,6 +326,7 @@ docker run --rm -v chat_history_data:/data -v ${PWD}:/backup alpine tar czf /bac
 | Method | Endpoint | Auth | Description |
 | -------- | ---------- | ------ | ------------- |
 | GET | `/health` | None | Server liveness check |
+| GET | `/models` | None | List available models on the running instance |
 | GET | `/stats` | Required | Vector store document count |
 | POST | `/chat` | Required | Send a question, get an answer |
 | GET | `/conversations/{id}` | Required | Get full conversation history |

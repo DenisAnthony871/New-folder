@@ -7,6 +7,12 @@ export const api = {
       return r.json();
     }),
 
+  models: () =>
+    fetch(`${BASE}/models`).then(r => {
+      if (!r.ok) throw new Error(r.status);
+      return r.json();
+    }),
+
   stats: (key, signal) =>
     fetch(`${BASE}/stats`, {
       headers: { "X-API-Key": key },
@@ -16,7 +22,7 @@ export const api = {
       return r.json();
     }),
 
-  chat: (key, query, conversationId = null) =>
+  chat: (key, query, conversationId = null, model = null) =>
     fetch(`${BASE}/chat`, {
       method: "POST",
       headers: {
@@ -26,6 +32,7 @@ export const api = {
       body: JSON.stringify({
         query,
         ...(conversationId && { conversation_id: conversationId }),
+        ...(model && { model }),
       }),
     }).then(r => {
       if (!r.ok) throw new Error(r.status);

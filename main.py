@@ -20,7 +20,7 @@ from typing import Optional
 from langchain_core.messages import HumanMessage, AIMessage
 from rag_graph import graph
 from database import vectorstore, check_ollama_health
-from config import DB_PATH, COLLECTION_NAME, MAX_HISTORY_TURNS, MAX_REQUEST_SIZE_BYTES
+from config import DB_PATH, COLLECTION_NAME, MAX_HISTORY_TURNS, MAX_REQUEST_SIZE_BYTES, SUPPORTED_MODELS, LLM_MODEL
 from chat_history import (
     init_db,
     create_conversation,
@@ -163,6 +163,7 @@ class BadRequestError(Exception):
 class ChatRequest(BaseModel):
     query: str = Field(..., min_length=1, max_length=500)
     conversation_id: Optional[str] = None
+    model: Optional[str] = None
 
     @field_validator("query")
     @classmethod
@@ -171,12 +172,25 @@ class ChatRequest(BaseModel):
             raise ValueError("Query cannot be blank")
         return v.strip()
 
+    @field_validator("model")
+    @classmethod
+    def validate_model(cls, v):
+        if v is None:
+            return LLM_MODEL
+        if v not in SUPPORTED_MODELS:
+            raise ValueError(
+                f"Unsupported model '{v}'. "
+                f"Supported: {list(SUPPORTED_MODELS.keys())}"
+            )
+        return v
+
 
 class ChatResponse(BaseModel):
     request_id: str
     conversation_id: str
     answer: str
     confidence: float
+    model: str
     status: str = "success"
     response_time_ms: float
 
@@ -187,6 +201,21 @@ class ChatResponse(BaseModel):
 @app.get("/health")
 def health():
     return {"status": "healthy"}
+
+@app.get("/models")
+def list_models():
+    """List all supported models and their availability based on configured API keys."""
+    available = []
+    for model_id, cfg in SUPPORTED_MODELS.items():
+        env_key = cfg["env_key"]
+        is_available = env_key is None or bool(os.environ.get(env_key))
+        available.append({
+            "id": model_id,
+            "display_name": cfg["display_name"],
+            "provider": cfg["provider"],
+            "available": is_available,
+        })
+    return {"models": available}
 
 
 # Protected endpoints — require valid API key
@@ -236,7 +265,12 @@ async def chat(request: Request, body: ChatRequest, api_key: str = Security(veri
     messages.append(HumanMessage(content=body.query))
 
     try:
-        result = graph.invoke({"messages": messages, "rewrite_count": 0, "confidence": 0.0})
+        result = graph.invoke({
+            "messages": messages,
+            "rewrite_count": 0,
+            "confidence": 0.0,
+            "model": body.model,
+        })
 
         result_messages = result.get("messages", []) if isinstance(result, dict) else []
         if not result_messages:
@@ -275,6 +309,7 @@ async def chat(request: Request, body: ChatRequest, api_key: str = Security(veri
             conversation_id=conversation_id,
             answer=answer,
             confidence=confidence,
+            model=body.model,
             status="success",
             response_time_ms=round(response_time, 2)
         )

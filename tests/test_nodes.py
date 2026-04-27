@@ -158,46 +158,50 @@ def test_generate_answer_normal():
     from unittest.mock import patch, MagicMock
     from nodes import generate_answer
     class ToolMsg: type = "tool"; content = "context"
-    state = {"messages": [HumanMessage(content="Q"), ToolMsg()]}
-    with patch('nodes.response_model') as mock_model:
-        mock_response = MagicMock(); mock_response.content = "Normal answer."
-        mock_model.invoke.return_value = mock_response
+    state = {"messages": [HumanMessage(content="Q"), ToolMsg()], "model": "llama3.2:3b"}
+    mock_llm = MagicMock()
+    mock_llm.invoke.return_value = MagicMock(content="Normal answer.")
+    with patch('chains.get_llm', return_value=mock_llm):
         result = generate_answer(state)
         assert result["messages"][0].content == "Normal answer."
+
 
 def test_generate_answer_json_guard():
     from unittest.mock import patch, MagicMock
     from nodes import generate_answer
-    state = {"messages": [HumanMessage(content="Q")]}
-    with patch('nodes.response_model') as mock_model:
-        mock_response = MagicMock(); mock_response.content = '{"key": "value"}'
-        mock_model.invoke.return_value = mock_response
+    state = {"messages": [HumanMessage(content="Q")], "model": "llama3.2:3b"}
+    mock_llm = MagicMock()
+    mock_llm.invoke.return_value = MagicMock(content='{"key": "value"}')
+    with patch('chains.get_llm', return_value=mock_llm):
         result = generate_answer(state)
         assert "don't have enough information" in result["messages"][0].content
+
 
 def test_generate_answer_context_truncation():
     from unittest.mock import patch, MagicMock
     from nodes import generate_answer
     from config import MAX_CONTEXT_CHARS
     class ToolMsg: type = "tool"; content = "a" * (MAX_CONTEXT_CHARS + 100)
-    state = {"messages": [HumanMessage(content="Q"), ToolMsg()]}
-    with patch('nodes.response_model') as mock_model:
-        mock_response = MagicMock(); mock_response.content = "Answer"
-        mock_model.invoke.return_value = mock_response
+    state = {"messages": [HumanMessage(content="Q"), ToolMsg()], "model": "llama3.2:3b"}
+    mock_llm = MagicMock()
+    mock_llm.invoke.return_value = MagicMock(content="Answer")
+    with patch('chains.get_llm', return_value=mock_llm) as mock_get_llm:
         generate_answer(state)
-        call_args = mock_model.invoke.call_args[0][0]
+        call_args = mock_llm.invoke.call_args[0][0]
         assert "...[truncated]" in call_args
+
 
 def test_generate_answer_no_tool_message():
     from unittest.mock import patch, MagicMock
     from nodes import generate_answer
-    state = {"messages": [HumanMessage(content="Q")]}
-    with patch('nodes.response_model') as mock_model:
-        mock_response = MagicMock(); mock_response.content = "Answer"
-        mock_model.invoke.return_value = mock_response
+    state = {"messages": [HumanMessage(content="Q")], "model": "llama3.2:3b"}
+    mock_llm = MagicMock()
+    mock_llm.invoke.return_value = MagicMock(content="Answer")
+    with patch('chains.get_llm', return_value=mock_llm):
         generate_answer(state)
-        call_args = mock_model.invoke.call_args[0][0]
+        call_args = mock_llm.invoke.call_args[0][0]
         assert "No documents retrieved." in call_args
+
 
 def test_generate_answer_conversation_history():
     from unittest.mock import patch, MagicMock
@@ -207,13 +211,14 @@ def test_generate_answer_conversation_history():
             HumanMessage(content="Hello"),
             AIMessage(content="Hi there"),
             HumanMessage(content="Question")
-        ]
+        ],
+        "model": "llama3.2:3b"
     }
-    with patch('nodes.response_model') as mock_model:
-        mock_response = MagicMock(); mock_response.content = "Answer"
-        mock_model.invoke.return_value = mock_response
+    mock_llm = MagicMock()
+    mock_llm.invoke.return_value = MagicMock(content="Answer")
+    with patch('chains.get_llm', return_value=mock_llm):
         generate_answer(state)
-        call_args = mock_model.invoke.call_args[0][0]
+        call_args = mock_llm.invoke.call_args[0][0]
         assert "CONVERSATION HISTORY" in call_args
         assert "Customer: Hello" in call_args
         assert "Agent: Hi there" in call_args

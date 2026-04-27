@@ -12,6 +12,7 @@ def mock_env(monkeypatch):
     import importlib
     import main
     importlib.reload(main)
+    main.API_KEY = "test-api-key-12345"  # override after load_dotenv() runs during reload
 
 @pytest.fixture
 def mock_graph():
@@ -19,7 +20,8 @@ def mock_graph():
         mock.invoke.return_value = {
             "messages": [AIMessage(content="Mocked answer from graph")],
             "confidence": 0.9,
-            "rewrite_count": 0
+            "rewrite_count": 0,
+            "model": "llama3.2:3b",
         }
         yield mock
 
@@ -49,16 +51,15 @@ def mock_db():
 
 @pytest.fixture
 def client(mock_graph, mock_db):
-
-    # Patch database startup checks before importing FastAPI app
-    with patch("database.check_ollama_health"), \
+    with patch("main.API_KEY", "test-api-key-12345"), \
+         patch("database.check_ollama_health"), \
          patch("chat_history.init_db"), \
          patch("main.check_ollama_health"), \
          patch("main.init_db"), \
          patch("main.vectorstore") as vs_mock:
-        
+
         vs_mock.get.return_value = {"ids": ["1", "2", "3"]}
-        
+
         from main import app
         yield TestClient(app)
 

@@ -93,21 +93,14 @@ EMBEDDING_MODEL = "nomic-embed-text"
 LLM_MODEL = "llama3.2:3b"
 
 HARMFUL_KEYWORDS = [
-    # Security threats
     "hack", "hacking", "hacked", "malware", "virus", "exploit",
     "ddos", "phishing", "ransomware", "spyware", "keylogger",
     "botnet", "trojan", "rootkit", "sql injection", "brute force",
-
-    # Illegal activity
     "steal", "stolen", "bypass", "crack", "cracking", "piracy",
     "illegal", "clone sim", "sim swap", "intercept", "sniff",
     "eavesdrop", "wiretap", "spoof",
-
-    # Personal data abuse
     "track someone", "spy on", "monitor someone", "stalk",
     "location track", "call records of", "someone's data",
-
-    # Fraud
     "fraud", "scam", "fake recharge", "cheat", "manipulate bill",
 ]
 
@@ -122,8 +115,46 @@ KEYWORD_THRESHOLD = 3
 MAX_REWRITES = 2
 RETRIEVER_K = 3
 
-MAX_HISTORY_TURNS = 5        # retain only last 5 turns (10 messages) of conversation
-MAX_REQUEST_SIZE_BYTES = 2 * 1024 * 1024  # 2MB request size limit
+MAX_HISTORY_TURNS = 5
+MAX_REQUEST_SIZE_BYTES = 2 * 1024 * 1024
 
-MAX_CONTEXT_CHARS = 1500        # max chars of retrieved context passed to LLM per answer
-MAX_PROMPT_CONTEXT_CHARS = 800  # max chars of context passed to hallucination check
+MAX_CONTEXT_CHARS = 1500
+MAX_PROMPT_CONTEXT_CHARS = 800
+
+SUPPORTED_MODELS = {
+    "llama3.2:3b": {
+        "provider": "ollama",
+        "display_name": "Llama 3.2 3B (Local)",
+        "env_key": None,
+    },
+    "claude-haiku-4-5-20251001": {
+        "provider": "anthropic",
+        "display_name": "Claude Haiku 4.5",
+        "env_key": "ANTHROPIC_API_KEY",
+    },
+    "claude-sonnet-4-6": {
+        "provider": "anthropic",
+        "display_name": "Claude Sonnet 4.6",
+        "env_key": "ANTHROPIC_API_KEY",
+    },
+    "gpt-4o-mini": {
+        "provider": "openai",
+        "display_name": "GPT-4o Mini",
+        "env_key": "OPENAI_API_KEY",
+    },
+    "gpt-4o": {
+        "provider": "openai",
+        "display_name": "GPT-4o",
+        "env_key": "OPENAI_API_KEY",
+    },
+    "gemini-2.0-flash": {
+        "provider": "google",
+        "display_name": "Gemini 2.0 Flash",
+        "env_key": "GOOGLE_API_KEY",
+    },
+    "gemini-1.5-pro": {
+        "provider": "google",
+        "display_name": "Gemini 1.5 Pro",
+        "env_key": "GOOGLE_API_KEY",
+    },
+}

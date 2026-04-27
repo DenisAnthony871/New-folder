@@ -1,3 +1,4 @@
+from config import LLM_MODEL
 import uuid
 import logging
 import re
@@ -16,8 +17,9 @@ from chains import rewrite_chain, response_model
 # ============= CUSTOM GRAPH STATE =============
 class JioState(TypedDict):
     messages: Annotated[list, add_messages]
-    confidence: NotRequired[float]    # 0.9 = high, 0.6 = medium, 0.3 = low; absent on first pass
-    rewrite_count: NotRequired[int]   # absent until first rewrite; treated as 0 via .get()
+    confidence: NotRequired[float]
+    rewrite_count: NotRequired[int]
+    model: NotRequired[str]   # which LLM to use for answer generation
 
 logger = logging.getLogger(__name__)
 
@@ -270,7 +272,9 @@ def grade_documents(state: JioState) -> str:
 
 # ============= NODE 5: GENERATE ANSWER =============
 def generate_answer(state: JioState):
+    from chains import get_llm
     messages = state["messages"]
+    model_name = state.get("model", LLM_MODEL)
 
     question = next(
         (msg.content for msg in reversed(messages) if msg.type == "human"),
@@ -279,20 +283,17 @@ def generate_answer(state: JioState):
 
     tool_messages = [msg.content for msg in messages if msg.type == "tool"]
     tool_message = "\n\n".join(tool_messages) if tool_messages else "No documents retrieved."
-    # Truncate to prevent token bloat on large knowledge base chunks
     if len(tool_message) > MAX_CONTEXT_CHARS:
         tool_message = tool_message[:MAX_CONTEXT_CHARS] + "...[truncated]"
         logger.info(f"Context truncated to {MAX_CONTEXT_CHARS} chars")
 
-    # Build conversation history for context (human & ai messages only, skip tool messages)
     history_lines = []
     for msg in messages:
         if msg.type == "human":
             history_lines.append(f"Customer: {msg.content}")
-        elif msg.type == "ai" and msg.content:  # skip empty tool-call AI messages
+        elif msg.type == "ai" and msg.content:
             history_lines.append(f"Agent: {msg.content}")
-    # Keep only last few turns to avoid token bloat, exclude current question
-    conversation_history = "\n".join(history_lines[:-1][-6:])  # last 3 turns (6 lines)
+    conversation_history = "\n".join(history_lines[:-1][-6:])
 
     history_block = ""
     if conversation_history.strip():
@@ -314,7 +315,8 @@ QUESTION:
 
 ANSWER (plain English only):"""
 
-    response = response_model.invoke(plain_prompt)
+    llm = get_llm(model_name)
+    response = llm.invoke(plain_prompt)
     answer = response.content
 
     import json
@@ -325,7 +327,7 @@ ANSWER (plain English only):"""
         except (json.JSONDecodeError, ValueError):
             pass
 
-    logger.info(f"Generated answer: {answer[:100]}...")
+    logger.info(f"Generated answer via {model_name}: {answer[:100]}...")
     return {"messages": [AIMessage(content=answer)]}
 
 
