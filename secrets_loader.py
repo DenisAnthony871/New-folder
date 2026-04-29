@@ -19,6 +19,7 @@ Usage
 
 import os
 import logging
+import threading
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +27,7 @@ _SECRETS_DIR = "/run/secrets"
 
 # Module-level cache — avoids repeated filesystem reads.
 _cache: dict[str, str | None] = {}
+_cache_lock = threading.Lock()
 
 
 def get_secret(name: str, *, default: str | None = None) -> str | None:
@@ -43,8 +45,9 @@ def get_secret(name: str, *, default: str | None = None) -> str | None:
     -------
     The resolved value (stripped of trailing newlines) or *default*.
     """
-    if name in _cache:
-        return _cache[name]
+    with _cache_lock:
+        if name in _cache:
+            return _cache[name]
 
     # 1. Docker secret file
     secret_path = os.path.join(_SECRETS_DIR, name)
@@ -53,24 +56,29 @@ def get_secret(name: str, *, default: str | None = None) -> str | None:
             with open(secret_path, "r", encoding="utf-8") as fh:
                 value = fh.read().strip()
             if value:
-                logger.info(f"Secret '{name}' loaded from Docker secret")
-                _cache[name] = value
+                logger.debug(f"Secret '{name}' loaded from Docker secret")
+                with _cache_lock:
+                    _cache[name] = value
                 return value
-    except (OSError, PermissionError) as exc:
+    # PermissionError is a subtype of OSError — catching OSError suffices
+    except OSError as exc:
         logger.warning(f"Could not read Docker secret '{name}': {exc}")
 
     # 2. Environment variable
     env_value = os.environ.get(name)
     if env_value:
         logger.debug(f"Secret '{name}' loaded from environment variable")
-        _cache[name] = env_value
+        with _cache_lock:
+            _cache[name] = env_value
         return env_value
 
     # 3. Default
-    _cache[name] = default
+    with _cache_lock:
+        _cache[name] = default
     return default
 
 
 def clear_cache() -> None:
     """Clear the cached secrets.  Useful in tests."""
-    _cache.clear()
+    with _cache_lock:
+        _cache.clear()

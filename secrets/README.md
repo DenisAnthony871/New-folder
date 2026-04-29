@@ -16,6 +16,14 @@ printf '%s' 'your-jio-rag-api-key' > secrets/JIO_RAG_API_KEY
 printf '%s' 'your-langchain-api-key' > secrets/LANGCHAIN_API_KEY
 ```
 
+Or copy the checked-in templates and replace the placeholder values:
+
+```bash
+cp secrets/JIO_RAG_API_KEY.example secrets/JIO_RAG_API_KEY
+cp secrets/LANGCHAIN_API_KEY.example secrets/LANGCHAIN_API_KEY
+# Edit each file and replace the placeholder with your real key
+```
+
 > **Note:** `echo` also works (`echo "value" > secrets/NAME`) because
 > `secrets_loader.py` calls `.strip()` on every value it reads.
 
@@ -48,7 +56,9 @@ printf '%s' 'your-google-key'    > secrets/GOOGLE_API_KEY
 - These files are excluded from Git via `.gitignore`
 - These files are excluded from the Docker build context via `.dockerignore`
 - They are **never** baked into the image — only mounted at runtime
-- They are **invisible** to `docker inspect` (unlike `env_file` values)
+- Secret **values** are not exposed by `docker inspect` (unlike `env_file` values).
+  Compose file-based secrets show the mount path in inspect output, but never the
+  value itself.  Docker Swarm secrets hide both path and value entirely.
 
 ## Generating a secure API key
 

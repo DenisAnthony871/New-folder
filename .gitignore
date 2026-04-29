@@ -17,6 +17,7 @@ build/
 secrets/*
 !secrets/README.md
 !secrets/.gitkeep
+!secrets/*.example
 
 # ChromaDB vector stores
 chroma_db_v4/
