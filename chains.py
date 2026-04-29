@@ -4,6 +4,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_ollama import ChatOllama
 from config import LLM_MODEL, SUPPORTED_MODELS
+from secrets_loader import get_secret
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +29,7 @@ def get_llm(model_name: str = LLM_MODEL):
         return ChatOllama(model=model_name, timeout=60, base_url=_OLLAMA_BASE)
 
     # Cloud model — verify API key present before attempting instantiation
-    api_key_value = os.environ.get(env_key) if env_key else None
+    api_key_value = get_secret(env_key) if env_key else None
     if not api_key_value:
         logger.warning(
             f"Model '{model_name}' requires {env_key} but it is not set. "

@@ -16,6 +16,10 @@ build/
 .env
 .env.local
 .env.*.local
+.env.docker
+
+# Docker secrets — mounted at runtime, never in build context
+secrets/
 
 # ChromaDB vector stores — bind-mounted at runtime
 chroma_db_v4/

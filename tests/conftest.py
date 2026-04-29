@@ -9,6 +9,9 @@ import uuid
 def mock_env(monkeypatch):
     monkeypatch.setenv("JIO_RAG_API_KEY", "test-api-key-12345")
     monkeypatch.setenv("ALLOWED_ORIGINS", "http://localhost:3000")
+    # Clear secrets_loader cache so monkeypatched env vars are picked up
+    from secrets_loader import clear_cache
+    clear_cache()
     import importlib
     import main
     importlib.reload(main)

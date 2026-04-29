@@ -37,5 +37,10 @@ USER appuser
 # Expose API port
 EXPOSE 8080
 
+# Built-in health check — ensures orchestrators and standalone `docker run`
+# can detect unhealthy containers without relying on external compose config.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+  CMD ["curl", "-f", "http://localhost:8080/health"]
+
 # Run the application
 CMD ["python", "main.py"]

@@ -4,22 +4,65 @@ services:
     container_name: jio-rag-api
     ports:
       - "8080:8080"
+
+    # ── Non-sensitive configuration ──────────────────────────────
+    # Only non-secret values go here.  Sensitive keys are mounted
+    # via Docker secrets below (invisible to `docker inspect`).
     env_file:
-      - .env
+      - .env.docker
     environment:
       # Point Ollama to host machine — overridable via host env for Linux / custom setups
       - OLLAMA_HOST=${OLLAMA_HOST:-http://host.docker.internal:11434}
+
+    # ── Docker Secrets (required) ────────────────────────────────
+    # Mounted read-only at /run/secrets/<name> inside the container.
+    # The application reads them via secrets_loader.get_secret().
+    #
+    # Optional cloud-LLM keys (ANTHROPIC_API_KEY, OPENAI_API_KEY,
+    # GOOGLE_API_KEY) are NOT listed here — they are resolved by
+    # secrets_loader from environment variables or, if you prefer,
+    # you can add them as secrets by creating the files and adding
+    # entries below.
+    secrets:
+      - JIO_RAG_API_KEY
+      - LANGCHAIN_API_KEY
+
     volumes:
-      # Persist ChromaDB vector store
-      - ./chroma_db_v4:/app/chroma_db_v4
+      # Persist ChromaDB vector store — READ-ONLY at runtime
+      # (indexing is an offline step; the running API only reads)
+      - ./chroma_db_v4:/app/chroma_db_v4:ro
       # Named volume for SQLite chat history — mounted at a directory so Docker
       # does not create a directory where SQLite expects to write a file.
       # The application opens the DB at /app/data/chat_history.db inside this directory.
       - chat_history_data:/app/data
+
     extra_hosts:
       # Required on Linux to resolve host.docker.internal
       - "host.docker.internal:host-gateway"
+
+    # ── Security hardening ───────────────────────────────────────
+    read_only: true                       # Immutable rootfs — blocks arbitrary file writes
+    tmpfs:
+      - /tmp                              # Writable /tmp required by Python, curl, etc.
+
+    cap_drop:
+      - ALL                               # Drop ALL Linux capabilities (NET_RAW, SYS_CHROOT, MKNOD, etc.)
+
+    security_opt:
+      - no-new-privileges:true            # Prevent setuid/setgid privilege escalation
+
+    # ── Resource limits (DoS / fork-bomb protection) ─────────────
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2G
+        reservations:
+          memory: 512M
+    pids_limit: 256                       # Prevent fork bombs
+
     restart: unless-stopped
+
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 30s
@@ -27,7 +70,19 @@ services:
       retries: 3
       start_period: 15s
 
+# ── Secret definitions ─────────────────────────────────────────
+# Each secret is a single-line file under ./secrets/ on the host.
+# Create them with: printf 'your-key-value' > secrets/JIO_RAG_API_KEY
+#
+# Only required secrets are listed.  To promote an optional cloud key
+# to a Docker secret, create the file and add entries to both this
+# block and the service's secrets: list above.
+secrets:
+  JIO_RAG_API_KEY:
+    file: ./secrets/JIO_RAG_API_KEY
+  LANGCHAIN_API_KEY:
+    file: ./secrets/LANGCHAIN_API_KEY
+
 volumes:
   # Docker manages this directory — the app creates chat_history.db inside it at runtime
   chat_history_data:
-

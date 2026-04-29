@@ -21,6 +21,7 @@ from langchain_core.messages import HumanMessage, AIMessage
 from rag_graph import graph
 from database import vectorstore, check_ollama_health
 from config import DB_PATH, COLLECTION_NAME, MAX_HISTORY_TURNS, MAX_REQUEST_SIZE_BYTES, SUPPORTED_MODELS, LLM_MODEL
+from secrets_loader import get_secret
 from chat_history import (
     init_db,
     create_conversation,
@@ -52,7 +53,7 @@ limiter = Limiter(key_func=get_remote_address)
 
 
 # ============= API KEY AUTH =============
-API_KEY = os.getenv("JIO_RAG_API_KEY")
+API_KEY = get_secret("JIO_RAG_API_KEY")
 ALLOWED_ORIGINS = [origin.strip() for origin in os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(",") if origin.strip()]
 api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 
@@ -208,7 +209,7 @@ def list_models():
     available = []
     for model_id, cfg in SUPPORTED_MODELS.items():
         env_key = cfg["env_key"]
-        is_available = env_key is None or bool(os.environ.get(env_key))
+        is_available = env_key is None or bool(get_secret(env_key))
         available.append({
             "id": model_id,
             "display_name": cfg["display_name"],
